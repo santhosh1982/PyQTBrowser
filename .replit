@@ -1,2 +1,30 @@
+modules = ["python-3.11"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+packages = ["zstd", "xorg.libX11", "xorg.libXext", "xorg.libXrender", "xorg.libxcb", "xorg.libXi", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXfixes", "xorg.libXrandr", "mesa", "libglvnd", "fontconfig", "freetype", "dbus", "glib", "nss", "nspr", "expat", "libdrm", "cups", "libxkbcommon", "alsa-lib", "libpulseaudio", "qt6.full", "gcc", "libatomic_ops", "xorg.libXtst", "systemd"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "browser"
+
+[[workflows.workflow]]
+name = "browser"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "vnc"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash run_browser.sh"
