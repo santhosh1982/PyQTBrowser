@@ -1,0 +1,23 @@
+{
+    "tabs": [
+        {
+            "url": "https://www.google.com/",
+            "title": "Google",
+            "index": 0
+        },
+        {
+            "url": "https://huggingface.co/",
+            "title": "Hugging Face \u2013 The A...",
+            "index": 1
+        },
+        {
+            "url": "https://www.google.com/",
+            "title": "Google",
+            "index": 2
+        }
+    ],
+    "pinned_tabs": [
+        0,
+        1
+    ]
+}

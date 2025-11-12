@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QToolBar,
                               QProgressBar, QListWidgetItem, QComboBox)
 from PyQt6.QtGui import QIcon, QAction, QKeySequence
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest, QWebEngineProfile
+from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest, QWebEngineProfile, QWebEngineScript
 
 
 class BrowserDatabase:
@@ -91,13 +91,286 @@ class BrowserDatabase:
         conn.close()
 
 
+class ThemeManager:
+    def __init__(self):
+        self.themes = {
+            'Light': {
+                'name': 'Light',
+                'primary': '#4a90e2',
+                'primary_hover': '#357abd',
+                'primary_pressed': '#2868a8',
+                'background': '#f5f5f5',
+                'surface': '#ffffff',
+                'border': '#e0e0e0',
+                'text': '#333333',
+                'text_secondary': '#666666',
+                'danger': '#e74c3c',
+                'danger_hover': '#c0392b',
+                'success': '#27ae60',
+                'success_hover': '#229954',
+                'toolbar_gradient_start': '#ffffff',
+                'toolbar_gradient_end': '#f0f0f0',
+                'tab_gradient_start': '#f0f0f0',
+                'tab_gradient_end': '#e0e0e0',
+                'hover_bg': '#e8f4fd'
+            },
+            'Dark': {
+                'name': 'Dark',
+                'primary': '#5dade2',
+                'primary_hover': '#3498db',
+                'primary_pressed': '#2980b9',
+                'background': '#1e1e1e',
+                'surface': '#2d2d2d',
+                'border': '#404040',
+                'text': '#e0e0e0',
+                'text_secondary': '#b0b0b0',
+                'danger': '#e74c3c',
+                'danger_hover': '#c0392b',
+                'success': '#27ae60',
+                'success_hover': '#229954',
+                'toolbar_gradient_start': '#2d2d2d',
+                'toolbar_gradient_end': '#252525',
+                'tab_gradient_start': '#3a3a3a',
+                'tab_gradient_end': '#2d2d2d',
+                'hover_bg': '#3a4a5a'
+            },
+            'Ocean': {
+                'name': 'Ocean',
+                'primary': '#16a085',
+                'primary_hover': '#138d75',
+                'primary_pressed': '#117a65',
+                'background': '#e8f8f5',
+                'surface': '#ffffff',
+                'border': '#a3e4d7',
+                'text': '#1a5f5f',
+                'text_secondary': '#45817e',
+                'danger': '#e74c3c',
+                'danger_hover': '#c0392b',
+                'success': '#1abc9c',
+                'success_hover': '#17a589',
+                'toolbar_gradient_start': '#d5f4e6',
+                'toolbar_gradient_end': '#c8ede0',
+                'tab_gradient_start': '#c8ede0',
+                'tab_gradient_end': '#b8e6d5',
+                'hover_bg': '#d5f4e6'
+            },
+            'Sunset': {
+                'name': 'Sunset',
+                'primary': '#e67e22',
+                'primary_hover': '#d35400',
+                'primary_pressed': '#ba4a00',
+                'background': '#fef5e7',
+                'surface': '#ffffff',
+                'border': '#f8c471',
+                'text': '#7d3c00',
+                'text_secondary': '#a04000',
+                'danger': '#e74c3c',
+                'danger_hover': '#c0392b',
+                'success': '#27ae60',
+                'success_hover': '#229954',
+                'toolbar_gradient_start': '#fdebd0',
+                'toolbar_gradient_end': '#fce5c3',
+                'tab_gradient_start': '#fce5c3',
+                'tab_gradient_end': '#faddb3',
+                'hover_bg': '#ffe8cc'
+            },
+            'Forest': {
+                'name': 'Forest',
+                'primary': '#27ae60',
+                'primary_hover': '#229954',
+                'primary_pressed': '#1e8449',
+                'background': '#e8f8f5',
+                'surface': '#ffffff',
+                'border': '#a9dfbf',
+                'text': '#145a32',
+                'text_secondary': '#1e8449',
+                'danger': '#e74c3c',
+                'danger_hover': '#c0392b',
+                'success': '#27ae60',
+                'success_hover': '#229954',
+                'toolbar_gradient_start': '#d5f4e6',
+                'toolbar_gradient_end': '#c8ede0',
+                'tab_gradient_start': '#c8ede0',
+                'tab_gradient_end': '#aed6a1',
+                'hover_bg': '#d4edda'
+            }
+        }
+    
+    def get_theme(self, theme_name):
+        return self.themes.get(theme_name, self.themes['Light'])
+    
+    def get_theme_names(self):
+        return list(self.themes.keys())
+    
+    def generate_stylesheet(self, theme_name):
+        theme = self.get_theme(theme_name)
+        return f"""
+            QMainWindow {{
+                background-color: {theme['background']};
+            }}
+            QToolBar {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {theme['toolbar_gradient_start']}, stop:1 {theme['toolbar_gradient_end']});
+                border: none;
+                border-bottom: 1px solid {theme['border']};
+                spacing: 8px;
+                padding: 8px;
+            }}
+            QLineEdit {{
+                border: 2px solid {theme['border']};
+                border-radius: 20px;
+                padding: 8px 16px;
+                background-color: {theme['surface']};
+                color: {theme['text']};
+                font-size: 13px;
+                selection-background-color: {theme['primary']};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {theme['primary']};
+                background-color: {theme['surface']};
+            }}
+            QPushButton {{
+                background-color: {theme['primary']};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['primary_hover']};
+            }}
+            QPushButton:pressed {{
+                background-color: {theme['primary_pressed']};
+            }}
+            QTabWidget::pane {{
+                border: none;
+                background-color: {theme['surface']};
+            }}
+            QTabBar::tab {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {theme['tab_gradient_start']}, stop:1 {theme['tab_gradient_end']});
+                border: 1px solid {theme['border']};
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                padding: 8px 16px;
+                margin-right: 2px;
+                min-width: 120px;
+                color: {theme['text']};
+            }}
+            QTabBar::tab:selected {{
+                background: {theme['surface']};
+                border-bottom: 2px solid {theme['primary']};
+            }}
+            QTabBar::tab:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {theme['surface']}, stop:1 {theme['tab_gradient_start']});
+            }}
+            QMenuBar {{
+                background-color: {theme['surface']};
+                border-bottom: 1px solid {theme['border']};
+                padding: 4px;
+                color: {theme['text']};
+            }}
+            QMenuBar::item {{
+                padding: 6px 12px;
+                border-radius: 4px;
+                color: {theme['text']};
+            }}
+            QMenuBar::item:selected {{
+                background-color: {theme['primary']};
+                color: white;
+            }}
+            QMenu {{
+                background-color: {theme['surface']};
+                border: 1px solid {theme['border']};
+                border-radius: 6px;
+                padding: 4px;
+                color: {theme['text']};
+            }}
+            QMenu::item {{
+                padding: 8px 24px;
+                border-radius: 4px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme['primary']};
+                color: white;
+            }}
+            QToolBar QToolButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 6px;
+                font-size: 18px;
+                font-weight: bold;
+                color: {theme['text']};
+            }}
+            QToolBar QToolButton:hover {{
+                background-color: {theme['hover_bg']};
+                color: {theme['primary']};
+            }}
+            QToolBar QToolButton:pressed {{
+                background-color: {theme['border']};
+            }}
+        """
+
+
+class ExtensionManager:
+    def __init__(self):
+        self.extensions_dir = 'browser_extensions'
+        self.extensions_file = 'extensions.json'
+        self.extensions = self.load_extensions()
+        
+        if not os.path.exists(self.extensions_dir):
+            os.makedirs(self.extensions_dir)
+    
+    def load_extensions(self):
+        if os.path.exists(self.extensions_file):
+            with open(self.extensions_file, 'r') as f:
+                return json.load(f)
+        return []
+    
+    def save_extensions(self):
+        with open(self.extensions_file, 'w') as f:
+            json.dump(self.extensions, f, indent=4)
+    
+    def add_extension(self, name, script_path, enabled=True):
+        extension = {
+            'id': len(self.extensions) + 1,
+            'name': name,
+            'script_path': script_path,
+            'enabled': enabled
+        }
+        self.extensions.append(extension)
+        self.save_extensions()
+        return extension
+    
+    def remove_extension(self, extension_id):
+        self.extensions = [ext for ext in self.extensions if ext['id'] != extension_id]
+        self.save_extensions()
+    
+    def toggle_extension(self, extension_id):
+        for ext in self.extensions:
+            if ext['id'] == extension_id:
+                ext['enabled'] = not ext['enabled']
+                self.save_extensions()
+                return ext['enabled']
+        return False
+    
+    def get_enabled_extensions(self):
+        return [ext for ext in self.extensions if ext['enabled']]
+
+
 class SettingsManager:
     def __init__(self):
         self.settings_file = 'browser_settings.json'
         self.default_settings = {
             'homepage': 'https://www.google.com',
             'search_engine': 'https://www.google.com/search?q=',
-            'download_path': os.path.expanduser('~/Downloads')
+            'download_path': os.path.expanduser('~/Downloads'),
+            'theme': 'Light'
         }
         self.settings = self.load_settings()
     
@@ -119,6 +392,38 @@ class SettingsManager:
         self.save_settings()
 
 
+class SessionManager:
+    def __init__(self):
+        self.session_file = 'browser_session.json'
+    
+    def save_session(self, tabs_data, pinned_tabs):
+        """Save current browser session"""
+        session = {
+            'tabs': tabs_data,
+            'pinned_tabs': list(pinned_tabs)
+        }
+        try:
+            with open(self.session_file, 'w', encoding='utf-8') as f:
+                json.dump(session, f, indent=4)
+        except Exception as e:
+            print(f"Error saving session: {str(e)}")
+    
+    def load_session(self):
+        """Load saved browser session"""
+        if os.path.exists(self.session_file):
+            try:
+                with open(self.session_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading session: {str(e)}")
+        return None
+    
+    def clear_session(self):
+        """Clear saved session"""
+        if os.path.exists(self.session_file):
+            os.remove(self.session_file)
+
+
 class BrowserTab(QWebEngineView):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -132,13 +437,47 @@ class BrowserTab(QWebEngineView):
 class DownloadManager(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Download Manager')
-        self.setGeometry(100, 100, 600, 400)
+        self.setWindowTitle('📥 Download Manager')
+        self.setGeometry(100, 100, 700, 500)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+                color: #333333;
+                padding: 8px;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+            }
+            QProgressBar {
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                text-align: center;
+                background-color: #f0f0f0;
+                height: 24px;
+            }
+            QProgressBar::chunk {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #4a90e2, stop:1 #357abd);
+                border-radius: 4px;
+            }
+        """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        title_label = QLabel('📦 Active Downloads')
+        layout.addWidget(title_label)
         
         self.download_list = QListWidget()
-        layout.addWidget(QLabel('Active Downloads:'))
         layout.addWidget(self.download_list)
         
         self.setLayout(layout)
@@ -195,23 +534,79 @@ class BookmarkDialog(QDialog):
     def __init__(self, database, parent=None):
         super().__init__(parent)
         self.database = database
-        self.setWindowTitle('Bookmarks')
-        self.setGeometry(100, 100, 600, 400)
+        self.setWindowTitle('⭐ Bookmarks')
+        self.setGeometry(100, 100, 700, 500)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333333;
+                padding: 8px;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #f0f0f0;
+                border-radius: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #e8f4fd;
+            }
+            QListWidget::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#deleteBtn {
+                background-color: #e74c3c;
+            }
+            QPushButton#deleteBtn:hover {
+                background-color: #c0392b;
+            }
+        """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
         
-        layout.addWidget(QLabel('Your Bookmarks:'))
+        title_label = QLabel('📚 Your Bookmarks')
+        layout.addWidget(title_label)
         
         self.bookmark_list = QListWidget()
         self.bookmark_list.itemDoubleClicked.connect(self.open_bookmark)
         layout.addWidget(self.bookmark_list)
         
         button_layout = QHBoxLayout()
-        delete_btn = QPushButton('Delete Selected')
+        button_layout.setSpacing(10)
+        delete_btn = QPushButton('🗑️ Delete Selected')
+        delete_btn.setObjectName('deleteBtn')
         delete_btn.clicked.connect(self.delete_bookmark)
         button_layout.addWidget(delete_btn)
         
-        close_btn = QPushButton('Close')
+        button_layout.addStretch()
+        
+        close_btn = QPushButton('✓ Close')
         close_btn.clicked.connect(self.close)
         button_layout.addWidget(close_btn)
         
@@ -246,23 +641,79 @@ class HistoryDialog(QDialog):
     def __init__(self, database, parent=None):
         super().__init__(parent)
         self.database = database
-        self.setWindowTitle('Browsing History')
-        self.setGeometry(100, 100, 600, 400)
+        self.setWindowTitle('📜 Browsing History')
+        self.setGeometry(100, 100, 700, 500)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333333;
+                padding: 8px;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #f0f0f0;
+                border-radius: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #e8f4fd;
+            }
+            QListWidget::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#clearBtn {
+                background-color: #e74c3c;
+            }
+            QPushButton#clearBtn:hover {
+                background-color: #c0392b;
+            }
+        """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
         
-        layout.addWidget(QLabel('Your Browsing History:'))
+        title_label = QLabel('🕒 Your Browsing History')
+        layout.addWidget(title_label)
         
         self.history_list = QListWidget()
         self.history_list.itemDoubleClicked.connect(self.open_history_item)
         layout.addWidget(self.history_list)
         
         button_layout = QHBoxLayout()
-        clear_btn = QPushButton('Clear All History')
+        button_layout.setSpacing(10)
+        clear_btn = QPushButton('🗑️ Clear All History')
+        clear_btn.setObjectName('clearBtn')
         clear_btn.clicked.connect(self.clear_history)
         button_layout.addWidget(clear_btn)
         
-        close_btn = QPushButton('Close')
+        button_layout.addStretch()
+        
+        close_btn = QPushButton('✓ Close')
         close_btn.clicked.connect(self.close)
         button_layout.addWidget(close_btn)
         
@@ -294,14 +745,343 @@ class HistoryDialog(QDialog):
             self.load_history()
 
 
+class ThemeDialog(QDialog):
+    def __init__(self, theme_manager, current_theme, parent=None):
+        super().__init__(parent)
+        self.theme_manager = theme_manager
+        self.current_theme = current_theme
+        self.selected_theme = current_theme
+        self.setWindowTitle('🎨 Browser Themes')
+        self.setGeometry(100, 100, 600, 500)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+                color: #333333;
+                padding: 8px;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 14px;
+            }
+            QListWidget::item {
+                padding: 16px;
+                border-bottom: 1px solid #f0f0f0;
+                border-radius: 6px;
+                margin: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #e8f4fd;
+            }
+            QListWidget::item:selected {
+                background-color: #4a90e2;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#applyBtn {
+                background-color: #27ae60;
+            }
+            QPushButton#applyBtn:hover {
+                background-color: #229954;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        title_label = QLabel('🎨 Choose Your Theme')
+        layout.addWidget(title_label)
+        
+        desc_label = QLabel('Select a theme to customize your browser appearance')
+        desc_label.setStyleSheet('font-size: 12px; font-weight: normal; color: #666666;')
+        layout.addWidget(desc_label)
+        
+        self.theme_list = QListWidget()
+        self.theme_list.itemClicked.connect(self.on_theme_selected)
+        
+        for theme_name in self.theme_manager.get_theme_names():
+            item = QListWidgetItem(f"🎨 {theme_name}")
+            item.setData(Qt.ItemDataRole.UserRole, theme_name)
+            self.theme_list.addItem(item)
+            if theme_name == current_theme:
+                item.setSelected(True)
+        
+        layout.addWidget(self.theme_list)
+        
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton('✗ Cancel')
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        apply_btn = QPushButton('✓ Apply Theme')
+        apply_btn.setObjectName('applyBtn')
+        apply_btn.clicked.connect(self.apply_theme)
+        button_layout.addWidget(apply_btn)
+        
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+    
+    def on_theme_selected(self, item):
+        self.selected_theme = item.data(Qt.ItemDataRole.UserRole)
+    
+    def apply_theme(self):
+        self.accept()
+    
+    def get_selected_theme(self):
+        return self.selected_theme
+
+
+class ExtensionDialog(QDialog):
+    def __init__(self, extension_manager, parent=None):
+        super().__init__(parent)
+        self.extension_manager = extension_manager
+        self.setWindowTitle('🧩 Extension Manager')
+        self.setGeometry(100, 100, 700, 500)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+                color: #333333;
+                padding: 8px;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #f0f0f0;
+                border-radius: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #e8f4fd;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#addBtn {
+                background-color: #27ae60;
+            }
+            QPushButton#addBtn:hover {
+                background-color: #229954;
+            }
+            QPushButton#removeBtn {
+                background-color: #e74c3c;
+            }
+            QPushButton#removeBtn:hover {
+                background-color: #c0392b;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        title_label = QLabel('🧩 Manage Browser Extensions')
+        layout.addWidget(title_label)
+        
+        desc_label = QLabel('Add custom JavaScript extensions to enhance your browsing experience')
+        desc_label.setStyleSheet('font-size: 12px; font-weight: normal; color: #666666;')
+        layout.addWidget(desc_label)
+        
+        self.extension_list = QListWidget()
+        layout.addWidget(self.extension_list)
+        
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        add_btn = QPushButton('➕ Add Extension')
+        add_btn.setObjectName('addBtn')
+        add_btn.clicked.connect(self.add_extension)
+        button_layout.addWidget(add_btn)
+        
+        toggle_btn = QPushButton('🔄 Toggle Enable/Disable')
+        toggle_btn.clicked.connect(self.toggle_extension)
+        button_layout.addWidget(toggle_btn)
+        
+        remove_btn = QPushButton('🗑️ Remove')
+        remove_btn.setObjectName('removeBtn')
+        remove_btn.clicked.connect(self.remove_extension)
+        button_layout.addWidget(remove_btn)
+        
+        button_layout.addStretch()
+        
+        close_btn = QPushButton('✓ Close')
+        close_btn.clicked.connect(self.close)
+        button_layout.addWidget(close_btn)
+        
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+        
+        self.load_extensions()
+    
+    def load_extensions(self):
+        self.extension_list.clear()
+        for ext in self.extension_manager.extensions:
+            status = '✓ Enabled' if ext['enabled'] else '✗ Disabled'
+            item = QListWidgetItem(f"{ext['name']} - {status}")
+            item.setData(Qt.ItemDataRole.UserRole, ext)
+            self.extension_list.addItem(item)
+    
+    def add_extension(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 'Select Extension Script', '', 'JavaScript Files (*.js);;All Files (*.*)'
+        )
+        
+        if file_path:
+            name, ok = QInputDialog.getText(self, 'Extension Name', 'Enter extension name:')
+            if ok and name:
+                # Copy the file to extensions directory
+                dest_path = os.path.join(self.extension_manager.extensions_dir, os.path.basename(file_path))
+                
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as src:
+                        content = src.read()
+                    with open(dest_path, 'w', encoding='utf-8') as dst:
+                        dst.write(content)
+                    
+                    self.extension_manager.add_extension(name, dest_path)
+                    self.load_extensions()
+                    QMessageBox.information(self, 'Success', f'Extension "{name}" added successfully!')
+                    
+                    if self.parent():
+                        self.parent().load_extensions()
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error', f'Failed to add extension: {str(e)}')
+    
+    def toggle_extension(self):
+        current_item = self.extension_list.currentItem()
+        if current_item:
+            ext = current_item.data(Qt.ItemDataRole.UserRole)
+            enabled = self.extension_manager.toggle_extension(ext['id'])
+            self.load_extensions()
+            status = 'enabled' if enabled else 'disabled'
+            QMessageBox.information(self, 'Extension Toggled', f'Extension "{ext["name"]}" is now {status}!')
+            
+            if self.parent():
+                self.parent().load_extensions()
+    
+    def remove_extension(self):
+        current_item = self.extension_list.currentItem()
+        if current_item:
+            ext = current_item.data(Qt.ItemDataRole.UserRole)
+            reply = QMessageBox.question(
+                self, 'Remove Extension',
+                f'Are you sure you want to remove "{ext["name"]}"?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self.extension_manager.remove_extension(ext['id'])
+                self.load_extensions()
+                QMessageBox.information(self, 'Extension Removed', f'Extension "{ext["name"]}" has been removed!')
+                
+                if self.parent():
+                    self.parent().load_extensions()
+
+
 class SettingsDialog(QDialog):
     def __init__(self, settings_manager, parent=None):
         super().__init__(parent)
         self.settings_manager = settings_manager
-        self.setWindowTitle('Browser Settings')
-        self.setGeometry(100, 100, 500, 300)
+        self.setWindowTitle('⚙️ Browser Settings')
+        self.setGeometry(100, 100, 600, 400)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 13px;
+                font-weight: bold;
+                color: #333333;
+                padding: 4px;
+            }
+            QLineEdit {
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #ffffff;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a90e2;
+            }
+            QComboBox {
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #ffffff;
+                font-size: 13px;
+            }
+            QComboBox:focus {
+                border: 2px solid #4a90e2;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#saveBtn {
+                background-color: #27ae60;
+            }
+            QPushButton#saveBtn:hover {
+                background-color: #229954;
+            }
+        """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
         
         homepage_layout = QHBoxLayout()
         homepage_layout.addWidget(QLabel('Homepage:'))
@@ -338,13 +1118,18 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         
         button_layout = QHBoxLayout()
-        save_btn = QPushButton('Save')
-        save_btn.clicked.connect(self.save_settings)
-        button_layout.addWidget(save_btn)
+        button_layout.setSpacing(10)
         
-        cancel_btn = QPushButton('Cancel')
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton('✗ Cancel')
         cancel_btn.clicked.connect(self.close)
         button_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton('💾 Save Settings')
+        save_btn.setObjectName('saveBtn')
+        save_btn.clicked.connect(self.save_settings)
+        button_layout.addWidget(save_btn)
         
         layout.addLayout(button_layout)
         self.setLayout(layout)
@@ -368,39 +1153,159 @@ class Browser(QMainWindow):
         
         self.database = BrowserDatabase()
         self.settings_manager = SettingsManager()
+        self.session_manager = SessionManager()
+        self.theme_manager = ThemeManager()
+        self.extension_manager = ExtensionManager()
         self.download_manager = DownloadManager(self)
         
         self.setWindowTitle('Modern Web Browser')
         self.setGeometry(100, 100, 1200, 800)
+        
+        # Apply theme
+        current_theme = self.settings_manager.get('theme')
+        self.apply_theme(current_theme)
+        
+        # Old stylesheet - will be replaced by apply_theme
+        old_stylesheet = """
+            QMainWindow {
+                background-color: #f5f5f5;
+            }
+            QToolBar {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #f0f0f0);
+                border: none;
+                border-bottom: 1px solid #d0d0d0;
+                spacing: 8px;
+                padding: 8px;
+            }
+            QLineEdit {
+                border: 2px solid #e0e0e0;
+                border-radius: 20px;
+                padding: 8px 16px;
+                background-color: #ffffff;
+                font-size: 13px;
+                selection-background-color: #4a90e2;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a90e2;
+                background-color: #ffffff;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton:pressed {
+                background-color: #2868a8;
+            }
+            QTabWidget::pane {
+                border: none;
+                background-color: #ffffff;
+            }
+            QTabBar::tab {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f0f0f0, stop:1 #e0e0e0);
+                border: 1px solid #d0d0d0;
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                padding: 8px 16px;
+                margin-right: 2px;
+                min-width: 120px;
+            }
+            QTabBar::tab:selected {
+                background: #ffffff;
+                border-bottom: 2px solid #4a90e2;
+            }
+            QTabBar::tab:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #f0f0f0);
+            }
+            QMenuBar {
+                background-color: #ffffff;
+                border-bottom: 1px solid #e0e0e0;
+                padding: 4px;
+            }
+            QMenuBar::item {
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QMenuBar::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+            QMenu {
+                background-color: #ffffff;
+                border: 1px solid #d0d0d0;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+            QToolBar QToolButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 6px;
+                font-size: 18px;
+                font-weight: bold;
+                color: #333333;
+            }
+            QToolBar QToolButton:hover {
+                background-color: #e8f4fd;
+                color: #4a90e2;
+            }
+            QToolBar QToolButton:pressed {
+                background-color: #d0e8f7;
+            }
+        """
         
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
         self.tabs.currentChanged.connect(self.update_url_bar)
         
+        # Tab pinning support
+        self.pinned_tabs = set()  # Store indices of pinned tabs
+        self.tabs.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tabs.tabBar().customContextMenuRequested.connect(self.show_tab_context_menu)
+        
         self.setCentralWidget(self.tabs)
         
         navbar = QToolBar()
         navbar.setMovable(False)
-        navbar.setIconSize(QSize(24, 24))
+        navbar.setIconSize(QSize(28, 28))
         self.addToolBar(navbar)
         
-        back_btn = QAction('←', self)
+        back_btn = QAction('◀', self)
         back_btn.setToolTip('Back')
         back_btn.triggered.connect(lambda: self.current_browser().back())
         navbar.addAction(back_btn)
         
-        forward_btn = QAction('→', self)
+        forward_btn = QAction('▶', self)
         forward_btn.setToolTip('Forward')
         forward_btn.triggered.connect(lambda: self.current_browser().forward())
         navbar.addAction(forward_btn)
         
-        reload_btn = QAction('⟳', self)
+        reload_btn = QAction('↻', self)
         reload_btn.setToolTip('Reload')
         reload_btn.triggered.connect(lambda: self.current_browser().reload())
         navbar.addAction(reload_btn)
         
-        home_btn = QAction('⌂', self)
+        home_btn = QAction('🏠', self)
         home_btn.setToolTip('Home')
         home_btn.triggered.connect(self.navigate_home)
         navbar.addAction(home_btn)
@@ -408,17 +1313,18 @@ class Browser(QMainWindow):
         navbar.addSeparator()
         
         self.url_bar = QLineEdit()
+        self.url_bar.setPlaceholderText('🔍 Search or enter website address...')
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         navbar.addWidget(self.url_bar)
         
         navbar.addSeparator()
         
-        new_tab_btn = QAction('+', self)
+        new_tab_btn = QAction('➕', self)
         new_tab_btn.setToolTip('New Tab')
         new_tab_btn.triggered.connect(lambda: self.add_new_tab(QUrl(self.settings_manager.get('homepage')), 'New Tab'))
         navbar.addAction(new_tab_btn)
         
-        bookmark_add_btn = QAction('★', self)
+        bookmark_add_btn = QAction('⭐', self)
         bookmark_add_btn.setToolTip('Bookmark this page')
         bookmark_add_btn.triggered.connect(self.add_bookmark)
         navbar.addAction(bookmark_add_btn)
@@ -474,13 +1380,29 @@ class Browser(QMainWindow):
         downloads_action.triggered.connect(self.show_downloads)
         tools_menu.addAction(downloads_action)
         
+        tools_menu.addSeparator()
+        
+        theme_action = QAction('🎨 Themes', self)
+        theme_action.triggered.connect(self.show_themes)
+        tools_menu.addAction(theme_action)
+        
+        extensions_action = QAction('🧩 Extensions', self)
+        extensions_action.triggered.connect(self.show_extensions)
+        tools_menu.addAction(extensions_action)
+        
+        tools_menu.addSeparator()
+        
         settings_action = QAction('Settings', self)
         settings_action.triggered.connect(self.show_settings)
         tools_menu.addAction(settings_action)
         
         QWebEngineProfile.defaultProfile().downloadRequested.connect(self.on_download_requested)
         
-        self.add_new_tab(QUrl(self.settings_manager.get('homepage')), 'Home')
+        # Load extensions
+        self.load_extensions()
+        
+        # Restore previous session or open homepage
+        self.restore_session()
         
         self.show()
     
@@ -504,8 +1426,15 @@ class Browser(QMainWindow):
         return browser
     
     def close_tab(self, i):
+        # Don't close pinned tabs
+        if i in self.pinned_tabs:
+            QMessageBox.information(self, 'Pinned Tab', 'Cannot close a pinned tab. Unpin it first!')
+            return
+        
         if self.tabs.count() > 1:
             self.tabs.removeTab(i)
+            # Update pinned tabs indices after removal
+            self.pinned_tabs = {idx if idx < i else idx - 1 for idx in self.pinned_tabs}
         else:
             self.close()
     
@@ -611,6 +1540,193 @@ class Browser(QMainWindow):
         
         self.download_manager.add_download(download, file_path)
         self.download_manager.show()
+    
+    def show_themes(self):
+        current_theme = self.settings_manager.get('theme')
+        dialog = ThemeDialog(self.theme_manager, current_theme, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_theme = dialog.get_selected_theme()
+            self.settings_manager.set('theme', selected_theme)
+            self.apply_theme(selected_theme)
+            QMessageBox.information(self, 'Theme Applied', f'Theme "{selected_theme}" has been applied!')
+    
+    def show_extensions(self):
+        dialog = ExtensionDialog(self.extension_manager, self)
+        dialog.exec()
+    
+    def apply_theme(self, theme_name):
+        stylesheet = self.theme_manager.generate_stylesheet(theme_name)
+        self.setStyleSheet(stylesheet)
+    
+    def load_extensions(self):
+        profile = QWebEngineProfile.defaultProfile()
+        scripts = profile.scripts()
+        
+        # Clear existing custom scripts
+        scripts.clear()
+        
+        # Load enabled extensions
+        for ext in self.extension_manager.get_enabled_extensions():
+            try:
+                if os.path.exists(ext['script_path']):
+                    with open(ext['script_path'], 'r', encoding='utf-8') as f:
+                        script_source = f.read()
+                    
+                    script = QWebEngineScript()
+                    script.setName(ext['name'])
+                    script.setSourceCode(script_source)
+                    script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
+                    script.setRunsOnSubFrames(True)
+                    script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
+                    
+                    scripts.insert(script)
+            except Exception as e:
+                print(f"Error loading extension {ext['name']}: {str(e)}")
+    
+    def show_tab_context_menu(self, position):
+        """Show context menu for tab operations"""
+        tab_bar = self.tabs.tabBar()
+        tab_index = tab_bar.tabAt(position)
+        
+        if tab_index < 0:
+            return
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #ffffff;
+                border: 2px solid #4a90e2;
+                border-radius: 8px;
+                padding: 8px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+        """)
+        
+        # Pin/Unpin action
+        is_pinned = tab_index in self.pinned_tabs
+        pin_text = '📌 Unpin Tab' if is_pinned else '📍 Pin Tab'
+        pin_action = menu.addAction(pin_text)
+        pin_action.triggered.connect(lambda: self.toggle_pin_tab(tab_index))
+        
+        menu.addSeparator()
+        
+        # Duplicate tab
+        duplicate_action = menu.addAction('📋 Duplicate Tab')
+        duplicate_action.triggered.connect(lambda: self.duplicate_tab(tab_index))
+        
+        # Reload tab
+        reload_action = menu.addAction('↻ Reload Tab')
+        reload_action.triggered.connect(lambda: self.reload_tab(tab_index))
+        
+        menu.addSeparator()
+        
+        # Close tab
+        close_action = menu.addAction('✗ Close Tab')
+        close_action.triggered.connect(lambda: self.close_tab(tab_index))
+        
+        # Close other tabs
+        close_others_action = menu.addAction('✗ Close Other Tabs')
+        close_others_action.triggered.connect(lambda: self.close_other_tabs(tab_index))
+        
+        # Close tabs to the right
+        close_right_action = menu.addAction('✗ Close Tabs to the Right')
+        close_right_action.triggered.connect(lambda: self.close_tabs_to_right(tab_index))
+        
+        menu.exec(tab_bar.mapToGlobal(position))
+    
+    def toggle_pin_tab(self, tab_index):
+        """Pin or unpin a tab"""
+        if tab_index in self.pinned_tabs:
+            # Unpin the tab
+            self.pinned_tabs.remove(tab_index)
+            self.tabs.setTabText(tab_index, self.tabs.tabText(tab_index).replace('📌 ', ''))
+            self.tabs.tabBar().setTabButton(tab_index, self.tabs.tabBar().ButtonPosition.RightSide, 
+                                           self.tabs.tabBar().tabButton(tab_index, self.tabs.tabBar().ButtonPosition.RightSide))
+        else:
+            # Pin the tab
+            self.pinned_tabs.add(tab_index)
+            current_text = self.tabs.tabText(tab_index)
+            if not current_text.startswith('📌 '):
+                self.tabs.setTabText(tab_index, f'📌 {current_text}')
+            # Hide close button for pinned tabs
+            self.tabs.tabBar().setTabButton(tab_index, self.tabs.tabBar().ButtonPosition.RightSide, None)
+    
+    def duplicate_tab(self, tab_index):
+        """Duplicate a tab"""
+        browser = self.tabs.widget(tab_index)
+        if browser:
+            url = browser.url()
+            self.add_new_tab(url, f'Copy of {self.tabs.tabText(tab_index)}')
+    
+    def reload_tab(self, tab_index):
+        """Reload a specific tab"""
+        browser = self.tabs.widget(tab_index)
+        if browser:
+            browser.reload()
+    
+    def close_other_tabs(self, tab_index):
+        """Close all tabs except the specified one"""
+        # Close tabs from right to left to maintain indices
+        for i in range(self.tabs.count() - 1, -1, -1):
+            if i != tab_index and i not in self.pinned_tabs:
+                self.tabs.removeTab(i)
+    
+    def close_tabs_to_right(self, tab_index):
+        """Close all tabs to the right of the specified tab"""
+        for i in range(self.tabs.count() - 1, tab_index, -1):
+            if i not in self.pinned_tabs:
+                self.tabs.removeTab(i)
+    
+    def save_session(self):
+        """Save current browser session"""
+        tabs_data = []
+        for i in range(self.tabs.count()):
+            browser = self.tabs.widget(i)
+            if browser:
+                url = browser.url().toString()
+                title = self.tabs.tabText(i).replace('📌 ', '')  # Remove pin icon from title
+                tabs_data.append({
+                    'url': url,
+                    'title': title,
+                    'index': i
+                })
+        
+        self.session_manager.save_session(tabs_data, self.pinned_tabs)
+    
+    def restore_session(self):
+        """Restore previous browser session"""
+        session = self.session_manager.load_session()
+        
+        if session and session.get('tabs'):
+            # Restore tabs
+            for tab_data in session['tabs']:
+                url = tab_data.get('url', self.settings_manager.get('homepage'))
+                title = tab_data.get('title', 'New Tab')
+                
+                # Skip about:blank or empty URLs
+                if url and url != 'about:blank':
+                    self.add_new_tab(QUrl(url), title)
+            
+            # Restore pinned tabs
+            pinned_indices = session.get('pinned_tabs', [])
+            for idx in pinned_indices:
+                if idx < self.tabs.count():
+                    self.toggle_pin_tab(idx)
+        else:
+            # No session found, open homepage
+            self.add_new_tab(QUrl(self.settings_manager.get('homepage')), 'Home')
+    
+    def closeEvent(self, event):
+        """Save session before closing"""
+        self.save_session()
+        event.accept()
 
 
 def main():

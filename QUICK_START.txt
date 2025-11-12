@@ -1,0 +1,62 @@
+🌐 MODERN WEB BROWSER - QUICK START GUIDE
+==========================================
+
+🎨 NEW FEATURES ADDED:
+----------------------
+
+1. THEMES SYSTEM
+   - 5 beautiful themes: Light, Dark, Ocean, Sunset, Forest
+   - Access: Tools → 🎨 Themes
+   - Themes save automatically and persist across sessions
+
+2. EXTENSION MANAGER
+   - Load custom JavaScript extensions
+   - Access: Tools → 🧩 Extensions
+   - Enable/disable extensions on the fly
+   - 3 sample extensions included!
+
+📦 SAMPLE EXTENSIONS:
+--------------------
+
+1. sample_extension_dark_mode.js
+   → Inverts colors for dark mode on any website
+
+2. sample_extension_auto_scroll.js
+   → Press 'S' to auto-scroll pages
+
+3. sample_extension_ad_blocker.js
+   → Hides common ad elements
+
+🚀 HOW TO USE:
+--------------
+
+STEP 1: Run the browser
+   python main.py
+
+STEP 2: Try a theme
+   - Click Tools → 🎨 Themes
+   - Select "Dark" or "Ocean"
+   - Click "Apply Theme"
+
+STEP 3: Add an extension
+   - Click Tools → 🧩 Extensions
+   - Click "➕ Add Extension"
+   - Select one of the sample_extension_*.js files
+   - Give it a name (e.g., "Auto Scroll")
+   - Click OK
+
+STEP 4: Test it!
+   - Visit any website
+   - If you added auto-scroll, press 'S' to start scrolling
+   - If you added dark mode, the page will invert colors
+
+💡 TIPS:
+--------
+- Themes apply instantly
+- Extensions work on all new pages you visit
+- Toggle extensions on/off without removing them
+- Create your own extensions by editing the sample files
+
+📚 For more details, see BROWSER_FEATURES.md
+
+Enjoy your enhanced browser! 🎉

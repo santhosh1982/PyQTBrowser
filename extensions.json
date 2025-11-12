@@ -1,0 +1,14 @@
+[
+    {
+        "id": 1,
+        "name": "auto-scroll",
+        "script_path": "browser_extensions\\sample_extension_auto_scroll.js",
+        "enabled": true
+    },
+    {
+        "id": 2,
+        "name": "dark-mode",
+        "script_path": "browser_extensions\\sample_extension_dark_mode.js",
+        "enabled": true
+    }
+]
