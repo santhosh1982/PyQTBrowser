@@ -12,7 +12,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QToolBar,
                               QTextEdit, QScrollArea, QFrame)
 from PyQt6.QtGui import QIcon, QAction, QKeySequence, QTextCursor
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest, QWebEngineProfile, QWebEngineScript
+from PyQt6.QtWebEngineCore import (QWebEngineDownloadRequest, QWebEngineProfile, 
+                                   QWebEngineScript, QWebEnginePage)
 
 
 class BrowserDatabase:
@@ -429,10 +430,239 @@ class BrowserTab(QWebEngineView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_browser = parent
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
         
     def createWindow(self, window_type):
         new_tab = self.parent_browser.add_new_tab(QUrl('about:blank'), 'New Tab')
         return new_tab
+    
+    def show_context_menu(self, position):
+        """Show custom context menu with AI actions"""
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #ffffff;
+                border: 2px solid #4a90e2;
+                border-radius: 8px;
+                padding: 8px;
+            }
+            QMenu::item {
+                padding: 8px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #4a90e2;
+                color: white;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #e0e0e0;
+                margin: 4px 0;
+            }
+        """)
+        
+        # Get selected text
+        self.page().runJavaScript("window.getSelection().toString();", 
+                                  lambda text: self.build_context_menu(menu, text, position))
+    
+    def build_context_menu(self, menu, selected_text, position):
+        """Build context menu based on selected text"""
+        has_selection = selected_text and selected_text.strip()
+        
+        if has_selection:
+            # AI Actions for selected text
+            ai_menu = menu.addMenu("🤖 Ask AI")
+            ai_menu.setStyleSheet(menu.styleSheet())
+            
+            explain_action = ai_menu.addAction("💡 Explain this")
+            explain_action.triggered.connect(lambda: self.send_to_ai("explain", selected_text))
+            
+            summarize_action = ai_menu.addAction("📄 Summarize this")
+            summarize_action.triggered.connect(lambda: self.send_to_ai("summarize", selected_text))
+            
+            translate_action = ai_menu.addAction("🌐 Translate this")
+            translate_action.triggered.connect(lambda: self.send_to_ai("translate", selected_text))
+            
+            simplify_action = ai_menu.addAction("📝 Simplify this")
+            simplify_action.triggered.connect(lambda: self.send_to_ai("simplify", selected_text))
+            
+            define_action = ai_menu.addAction("📖 Define terms")
+            define_action.triggered.connect(lambda: self.send_to_ai("define", selected_text))
+            
+            ai_menu.addSeparator()
+            
+            ask_action = ai_menu.addAction("💬 Ask about this...")
+            ask_action.triggered.connect(lambda: self.send_to_ai("ask", selected_text))
+            
+            menu.addSeparator()
+        
+        # Standard browser actions
+        back_action = menu.addAction("◀ Back")
+        back_action.triggered.connect(self.back)
+        back_action.setEnabled(self.history().canGoBack())
+        
+        forward_action = menu.addAction("▶ Forward")
+        forward_action.triggered.connect(self.forward)
+        forward_action.setEnabled(self.history().canGoForward())
+        
+        reload_action = menu.addAction("↻ Reload")
+        reload_action.triggered.connect(self.reload)
+        
+        menu.addSeparator()
+        
+        # Developer Tools
+        inspect_action = menu.addAction("🔍 Inspect Element")
+        inspect_action.triggered.connect(lambda: self.inspect_element_at_position(position))
+        
+        view_source_action = menu.addAction("📄 View Page Source")
+        view_source_action.triggered.connect(self.view_page_source)
+        
+        menu.addSeparator()
+        
+        if has_selection:
+            copy_action = menu.addAction("📋 Copy")
+            copy_action.triggered.connect(lambda: self.page().triggerAction(self.page().WebAction.Copy))
+            
+            search_action = menu.addAction("🔍 Search with Google")
+            search_action.triggered.connect(lambda: self.search_selected(selected_text))
+        
+        # Show menu at cursor position
+        menu.exec(self.mapToGlobal(position))
+    
+    def send_to_ai(self, action, text):
+        """Send selected text to AI chat with specific action"""
+        if not self.parent_browser:
+            return
+        
+        # Open AI panel if not visible
+        if not self.parent_browser.ai_panel_visible:
+            self.parent_browser.toggle_ai_panel()
+        
+        # Get AI panel
+        ai_panel = self.parent_browser.ai_panel
+        
+        # Prepare prompt based on action
+        prompts = {
+            "explain": f"Please explain the following text in detail:\n\n{text}",
+            "summarize": f"Please provide a concise summary of:\n\n{text}",
+            "translate": f"Please translate the following text to English (or if already in English, translate to Spanish):\n\n{text}",
+            "simplify": f"Please simplify and explain in simple terms:\n\n{text}",
+            "define": f"Please define and explain the key terms in:\n\n{text}",
+            "ask": text  # For custom questions, just use the text as context
+        }
+        
+        prompt = prompts.get(action, text)
+        
+        # Send directly to AI with selection indicator
+        ai_panel.add_user_message(prompt, from_selection=True)
+        response = ai_panel.generate_ai_response(prompt)
+        ai_panel.add_ai_message(response)
+    
+    def search_selected(self, text):
+        """Search selected text with Google"""
+        if self.parent_browser:
+            search_url = f"https://www.google.com/search?q={text.replace(' ', '+')}"
+            self.parent_browser.add_new_tab(QUrl(search_url), f"Search: {text[:20]}...")
+    
+    def inspect_element_at_position(self, position):
+        """Inspect element at cursor position"""
+        if not self.parent_browser:
+            return
+        
+        # Open DevTools if not visible
+        if not self.parent_browser.devtools_visible:
+            self.parent_browser.toggle_devtools()
+        
+        # Switch to Elements tab
+        self.parent_browser.devtools_panel.tools_tabs.setCurrentIndex(2)  # Elements tab
+        
+        # Get element at position using JavaScript
+        script = f"""
+        (function() {{
+            var element = document.elementFromPoint({position.x()}, {position.y()});
+            if (element) {{
+                var html = element.outerHTML;
+                var tagName = element.tagName.toLowerCase();
+                var id = element.id ? '#' + element.id : '';
+                var classes = element.className ? '.' + element.className.split(' ').join('.') : '';
+                var selector = tagName + id + classes;
+                
+                return {{
+                    html: html,
+                    selector: selector,
+                    tagName: tagName,
+                    id: element.id,
+                    className: element.className,
+                    textContent: element.textContent.substring(0, 100)
+                }};
+            }}
+            return null;
+        }})();
+        """
+        
+        self.page().runJavaScript(script, lambda result: self.display_inspected_element(result))
+    
+    def display_inspected_element(self, element_info):
+        """Display inspected element in DevTools"""
+        if not element_info or not self.parent_browser:
+            return
+        
+        devtools = self.parent_browser.devtools_panel
+        
+        # Format element information
+        output = f"""🔍 INSPECTED ELEMENT
+{'=' * 50}
+
+Selector: {element_info.get('selector', 'N/A')}
+Tag: <{element_info.get('tagName', 'N/A')}>
+ID: {element_info.get('id', '(none)')}
+Class: {element_info.get('className', '(none)')}
+
+HTML:
+{'-' * 50}
+{element_info.get('html', 'N/A')}
+
+Text Content:
+{'-' * 50}
+{element_info.get('textContent', 'N/A')}
+"""
+        
+        devtools.elements_display.setPlainText(output)
+        devtools.log_console(f"Inspected: {element_info.get('selector', 'element')}", "info")
+    
+    def view_page_source(self):
+        """View page source in DevTools"""
+        if not self.parent_browser:
+            return
+        
+        # Open DevTools if not visible
+        if not self.parent_browser.devtools_visible:
+            self.parent_browser.toggle_devtools()
+        
+        # Switch to Elements tab
+        self.parent_browser.devtools_panel.tools_tabs.setCurrentIndex(2)  # Elements tab
+        
+        # Get full page source
+        script = "document.documentElement.outerHTML;"
+        self.page().runJavaScript(script, lambda html: self.display_page_source(html))
+    
+    def display_page_source(self, html):
+        """Display page source in DevTools"""
+        if not html or not self.parent_browser:
+            return
+        
+        devtools = self.parent_browser.devtools_panel
+        
+        # Format and display
+        output = f"""📄 PAGE SOURCE
+{'=' * 50}
+
+{html}
+"""
+        
+        devtools.elements_display.setPlainText(output)
+        devtools.log_console("Viewing page source", "info")
 
 
 class DownloadManager(QDialog):
@@ -1265,8 +1495,8 @@ class AIChatPanel(QWidget):
                 background-color: #f8f9fa;
                 border: none;
                 padding: 12px;
-                font-size: 13px;
-                line-height: 1.6;
+                font-size: 15px;
+                line-height: 1.8;
             }
         """)
         layout.addWidget(self.chat_display, 1)
@@ -1350,14 +1580,21 @@ class AIChatPanel(QWidget):
                            "• General assistance\n\n"
                            "Try the quick action buttons or type your question!")
     
-    def add_user_message(self, message):
+    def add_user_message(self, message, from_selection=False):
         """Add user message to chat"""
         self.chat_history.append(('user', message))
+        
+        # Add indicator if from text selection
+        indicator = "📌 " if from_selection else ""
+        
+        # Escape HTML and preserve line breaks
+        message_html = message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+        
         html = f"""
         <div style='margin: 10px 0; text-align: right;'>
             <div style='display: inline-block; background-color: #4a90e2; color: white; 
                         padding: 10px 15px; border-radius: 12px; max-width: 80%; text-align: left;'>
-                <strong>You:</strong><br>{message}
+                <strong>{indicator}You:</strong><br>{message_html}
             </div>
         </div>
         """
@@ -1699,6 +1936,466 @@ class AISettingsDialog(QDialog):
         self.accept()
 
 
+class DevToolsPanel(QWidget):
+    """Developer Tools Panel with Console, Network, Elements, etc."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_browser = parent
+        self.console_messages = []
+        self.network_requests = []
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Header
+        header = QWidget()
+        header.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2c3e50, stop:1 #34495e);
+                padding: 8px;
+            }
+            QLabel {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+        """)
+        
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(8, 4, 8, 4)
+        
+        title = QLabel("🔧 Developer Tools")
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        clear_btn = QPushButton("🗑️ Clear")
+        clear_btn.clicked.connect(self.clear_console)
+        header_layout.addWidget(clear_btn)
+        
+        layout.addWidget(header)
+        
+        # Tab widget for different tools
+        self.tools_tabs = QTabWidget()
+        self.tools_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: none;
+                background-color: #1e1e1e;
+            }
+            QTabBar::tab {
+                background: #2d2d2d;
+                color: #cccccc;
+                padding: 8px 16px;
+                border: none;
+                border-right: 1px solid #1e1e1e;
+            }
+            QTabBar::tab:selected {
+                background: #1e1e1e;
+                color: #4a90e2;
+                border-bottom: 2px solid #4a90e2;
+            }
+            QTabBar::tab:hover {
+                background: #3d3d3d;
+            }
+        """)
+        
+        # Console Tab
+        self.console_widget = self.create_console_tab()
+        self.tools_tabs.addTab(self.console_widget, "📟 Console")
+        
+        # Network Tab
+        self.network_widget = self.create_network_tab()
+        self.tools_tabs.addTab(self.network_widget, "🌐 Network")
+        
+        # Elements Tab
+        self.elements_widget = self.create_elements_tab()
+        self.tools_tabs.addTab(self.elements_widget, "🔍 Elements")
+        
+        # Storage Tab
+        self.storage_widget = self.create_storage_tab()
+        self.tools_tabs.addTab(self.storage_widget, "💾 Storage")
+        
+        # Performance Tab
+        self.performance_widget = self.create_performance_tab()
+        self.tools_tabs.addTab(self.performance_widget, "⚡ Performance")
+        
+        layout.addWidget(self.tools_tabs)
+        self.setLayout(layout)
+    
+    def create_console_tab(self):
+        """Create console tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Console output
+        self.console_output = QTextEdit()
+        self.console_output.setReadOnly(True)
+        self.console_output.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 14px;
+                border: none;
+                padding: 8px;
+            }
+        """)
+        layout.addWidget(self.console_output)
+        
+        # Console input
+        input_container = QWidget()
+        input_container.setStyleSheet("background-color: #2d2d2d; padding: 8px;")
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(8, 4, 8, 4)
+        
+        prompt_label = QLabel("❯")
+        prompt_label.setStyleSheet("color: #4a90e2; font-weight: bold; font-size: 14px;")
+        input_layout.addWidget(prompt_label)
+        
+        self.console_input = QLineEdit()
+        self.console_input.setPlaceholderText("Execute JavaScript...")
+        self.console_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 8px;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4a90e2;
+            }
+        """)
+        self.console_input.returnPressed.connect(self.execute_console_command)
+        input_layout.addWidget(self.console_input)
+        
+        layout.addWidget(input_container)
+        
+        # Add welcome message
+        self.log_console("🔧 Developer Console Ready", "info")
+        self.log_console("Type JavaScript commands to execute", "info")
+        
+        return widget
+    
+    def create_network_tab(self):
+        """Create network monitoring tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Network list
+        self.network_list = QListWidget()
+        self.network_list.setStyleSheet("""
+            QListWidget {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 13px;
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid #2d2d2d;
+            }
+            QListWidget::item:hover {
+                background-color: #2d2d2d;
+            }
+            QListWidget::item:selected {
+                background-color: #3d3d3d;
+            }
+        """)
+        layout.addWidget(self.network_list)
+        
+        # Info label
+        info_label = QLabel("🌐 Network requests will appear here when pages load")
+        info_label.setStyleSheet("color: #888; font-size: 11px; padding: 8px;")
+        layout.addWidget(info_label)
+        
+        return widget
+    
+    def create_elements_tab(self):
+        """Create elements inspector tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Toolbar
+        toolbar = QWidget()
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(0, 0, 0, 8)
+        
+        inspect_btn = QPushButton("🔍 Inspect Element")
+        inspect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+        """)
+        inspect_btn.clicked.connect(self.inspect_element)
+        toolbar_layout.addWidget(inspect_btn)
+        
+        toolbar_layout.addStretch()
+        layout.addWidget(toolbar)
+        
+        # Elements tree
+        self.elements_display = QTextEdit()
+        self.elements_display.setReadOnly(True)
+        self.elements_display.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 13px;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(self.elements_display)
+        
+        self.elements_display.setPlainText("Click 'Inspect Element' to view page structure")
+        
+        return widget
+    
+    def create_storage_tab(self):
+        """Create storage inspector tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Storage info
+        self.storage_display = QTextEdit()
+        self.storage_display.setReadOnly(True)
+        self.storage_display.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 13px;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(self.storage_display)
+        
+        # Buttons
+        btn_layout = QHBoxLayout()
+        
+        cookies_btn = QPushButton("🍪 View Cookies")
+        cookies_btn.clicked.connect(self.view_cookies)
+        btn_layout.addWidget(cookies_btn)
+        
+        localstorage_btn = QPushButton("💾 View LocalStorage")
+        localstorage_btn.clicked.connect(self.view_localstorage)
+        btn_layout.addWidget(localstorage_btn)
+        
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        
+        self.storage_display.setPlainText("💾 Storage Inspector\n\nClick buttons above to view cookies and localStorage")
+        
+        return widget
+    
+    def create_performance_tab(self):
+        """Create performance monitoring tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        
+        # Performance metrics
+        self.performance_display = QTextEdit()
+        self.performance_display.setReadOnly(True)
+        self.performance_display.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #cccccc;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 13px;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(self.performance_display)
+        
+        # Buttons
+        btn_layout = QHBoxLayout()
+        
+        measure_btn = QPushButton("⚡ Measure Performance")
+        measure_btn.clicked.connect(self.measure_performance)
+        btn_layout.addWidget(measure_btn)
+        
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        
+        self.performance_display.setPlainText("⚡ Performance Monitor\n\nClick 'Measure Performance' to analyze page metrics")
+        
+        return widget
+    
+    def log_console(self, message, level="log"):
+        """Add message to console"""
+        colors = {
+            "log": "#cccccc",
+            "info": "#4a90e2",
+            "warn": "#f39c12",
+            "error": "#e74c3c",
+            "success": "#27ae60"
+        }
+        
+        icons = {
+            "log": "▸",
+            "info": "ℹ",
+            "warn": "⚠",
+            "error": "✖",
+            "success": "✓"
+        }
+        
+        color = colors.get(level, "#cccccc")
+        icon = icons.get(level, "▸")
+        
+        html = f'<span style="color: {color};">{icon} {message}</span><br>'
+        self.console_output.append(html)
+        self.console_messages.append((level, message))
+    
+    def execute_console_command(self):
+        """Execute JavaScript command in console"""
+        command = self.console_input.text().strip()
+        if not command:
+            return
+        
+        self.log_console(f"❯ {command}", "log")
+        self.console_input.clear()
+        
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                browser.page().runJavaScript(command, lambda result: self.handle_console_result(result))
+    
+    def handle_console_result(self, result):
+        """Handle JavaScript execution result"""
+        if result is not None:
+            self.log_console(f"← {result}", "success")
+        else:
+            self.log_console("← undefined", "info")
+    
+    def clear_console(self):
+        """Clear console output"""
+        self.console_output.clear()
+        self.console_messages.clear()
+        self.log_console("Console cleared", "info")
+    
+    def inspect_element(self):
+        """Inspect page elements"""
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                script = """
+                (function() {
+                    return document.documentElement.outerHTML;
+                })();
+                """
+                browser.page().runJavaScript(script, self.display_elements)
+    
+    def display_elements(self, html):
+        """Display page HTML structure"""
+        if html:
+            # Format HTML for display (simplified)
+            formatted = html[:5000]  # Limit to first 5000 chars
+            if len(html) > 5000:
+                formatted += "\n\n... (truncated)"
+            self.elements_display.setPlainText(formatted)
+        else:
+            self.elements_display.setPlainText("No HTML content available")
+    
+    def view_cookies(self):
+        """View page cookies"""
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                script = "document.cookie;"
+                browser.page().runJavaScript(script, lambda cookies: self.display_storage("Cookies", cookies))
+    
+    def view_localstorage(self):
+        """View localStorage"""
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                script = """
+                (function() {
+                    let items = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                        let key = localStorage.key(i);
+                        items[key] = localStorage.getItem(key);
+                    }
+                    return JSON.stringify(items, null, 2);
+                })();
+                """
+                browser.page().runJavaScript(script, lambda storage: self.display_storage("LocalStorage", storage))
+    
+    def display_storage(self, storage_type, data):
+        """Display storage data"""
+        if data:
+            self.storage_display.setPlainText(f"{storage_type}:\n\n{data}")
+        else:
+            self.storage_display.setPlainText(f"{storage_type}: Empty")
+    
+    def measure_performance(self):
+        """Measure page performance"""
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                script = """
+                (function() {
+                    const perf = performance.timing;
+                    const metrics = {
+                        'Page Load Time': (perf.loadEventEnd - perf.navigationStart) + 'ms',
+                        'DOM Ready': (perf.domContentLoadedEventEnd - perf.navigationStart) + 'ms',
+                        'DNS Lookup': (perf.domainLookupEnd - perf.domainLookupStart) + 'ms',
+                        'TCP Connection': (perf.connectEnd - perf.connectStart) + 'ms',
+                        'Server Response': (perf.responseEnd - perf.requestStart) + 'ms',
+                        'DOM Processing': (perf.domComplete - perf.domLoading) + 'ms'
+                    };
+                    return JSON.stringify(metrics, null, 2);
+                })();
+                """
+                browser.page().runJavaScript(script, self.display_performance)
+    
+    def display_performance(self, metrics):
+        """Display performance metrics"""
+        if metrics:
+            self.performance_display.setPlainText(f"⚡ Performance Metrics:\n\n{metrics}")
+        else:
+            self.performance_display.setPlainText("Performance data not available")
+
+
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1840,16 +2537,29 @@ class Browser(QMainWindow):
         self.ai_panel.setMinimumWidth(300)
         self.ai_panel.setMaximumWidth(500)
         
-        # Create splitter for main content and side panel
+        # Create Developer Tools panel
+        self.devtools_panel = DevToolsPanel(self)
+        self.devtools_panel.setMinimumHeight(200)
+        
+        # Create vertical splitter for main content and devtools
+        self.vertical_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.vertical_splitter.addWidget(self.tabs)
+        self.vertical_splitter.addWidget(self.devtools_panel)
+        self.vertical_splitter.setStretchFactor(0, 3)  # Main content
+        self.vertical_splitter.setStretchFactor(1, 1)  # DevTools
+        
+        # Create horizontal splitter for content and AI panel
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.addWidget(self.tabs)
+        self.splitter.addWidget(self.vertical_splitter)
         self.splitter.addWidget(self.ai_panel)
         self.splitter.setStretchFactor(0, 3)  # Main content gets more space
         self.splitter.setStretchFactor(1, 1)  # Side panel gets less space
         
-        # Initially hide the AI panel
+        # Initially hide panels
         self.ai_panel.hide()
         self.ai_panel_visible = False
+        self.devtools_panel.hide()
+        self.devtools_visible = False
         
         self.setCentralWidget(self.splitter)
         
@@ -1904,6 +2614,11 @@ class Browser(QMainWindow):
         ai_panel_btn.triggered.connect(self.toggle_ai_panel)
         navbar.addAction(ai_panel_btn)
         
+        devtools_btn = QAction('🔧', self)
+        devtools_btn.setToolTip('Toggle Developer Tools')
+        devtools_btn.triggered.connect(self.toggle_devtools)
+        navbar.addAction(devtools_btn)
+        
         menu_bar = self.menuBar()
         
         file_menu = menu_bar.addMenu('File')
@@ -1949,6 +2664,13 @@ class Browser(QMainWindow):
         history_menu.addAction(clear_history_action)
         
         tools_menu = menu_bar.addMenu('Tools')
+        
+        devtools_action = QAction('🔧 Developer Tools', self)
+        devtools_action.setShortcut(QKeySequence('F12'))
+        devtools_action.triggered.connect(self.toggle_devtools)
+        tools_menu.addAction(devtools_action)
+        
+        tools_menu.addSeparator()
         
         ai_chat_action = QAction('🤖 AI Chat Assistant', self)
         ai_chat_action.setShortcut(QKeySequence('Ctrl+Shift+A'))
@@ -2313,6 +3035,15 @@ class Browser(QMainWindow):
             self.ai_panel.show()
         else:
             self.ai_panel.hide()
+    
+    def toggle_devtools(self):
+        """Toggle Developer Tools panel visibility"""
+        self.devtools_visible = not self.devtools_visible
+        
+        if self.devtools_visible:
+            self.devtools_panel.show()
+        else:
+            self.devtools_panel.hide()
     
     def closeEvent(self, event):
         """Save session before closing"""
