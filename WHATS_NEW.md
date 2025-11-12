@@ -2,6 +2,41 @@
 
 ## Major Updates
 
+### 💾 Session Persistence (NEW!)
+Your browser now automatically saves and restores your browsing session:
+
+- **Auto-save** all open tabs when you close the browser
+- **Auto-restore** tabs when you reopen
+- **Pinned tabs** are remembered and restored as pinned
+- **Tab order** is preserved exactly as you left it
+- **Crash recovery** - resume from last saved session
+
+**How it works**:
+- Close browser → Session saved automatically
+- Reopen browser → All tabs restored with pinned status
+- No configuration needed - it just works!
+
+**Session file**: `browser_session.json` (JSON format, easy to backup)
+
+---
+
+### 📌 Tab Pinning (NEW!)
+Right-click any tab to access powerful tab management:
+
+- **Pin/Unpin tabs** - Keep important tabs open and protected
+- **Duplicate tabs** - Create copies for comparison
+- **Reload specific tabs** - Refresh without switching
+- **Close other tabs** - Clean up while keeping pinned tabs
+- **Close tabs to right** - Remove tabs you don't need
+- **Protected pinned tabs** - Cannot be accidentally closed
+
+**Visual indicators**:
+- Pinned tabs show 📌 icon
+- Close button hidden on pinned tabs
+- Modern context menu with smooth styling
+
+---
+
 ### 🎨 Theme System (NEW!)
 Your browser now supports **5 stunning themes** that transform the entire interface:
 
