@@ -1996,22 +1996,22 @@ class DevToolsPanel(QWidget):
         self.tools_tabs.setStyleSheet("""
             QTabWidget::pane {
                 border: none;
-                background-color: #1e1e1e;
+                background-color: #ffffff;
             }
             QTabBar::tab {
-                background: #2d2d2d;
-                color: #cccccc;
+                background: #f5f5f5;
+                color: #333333;
                 padding: 8px 16px;
                 border: none;
-                border-right: 1px solid #1e1e1e;
+                border-right: 1px solid #e0e0e0;
             }
             QTabBar::tab:selected {
-                background: #1e1e1e;
+                background: #ffffff;
                 color: #4a90e2;
                 border-bottom: 2px solid #4a90e2;
             }
             QTabBar::tab:hover {
-                background: #3d3d3d;
+                background: #e8e8e8;
             }
         """)
         
@@ -2049,11 +2049,11 @@ class DevToolsPanel(QWidget):
         self.console_output.setReadOnly(True)
         self.console_output.setStyleSheet("""
             QTextEdit {
-                background-color: #1e1e1e;
-                color: #cccccc;
+                background-color: #ffffff;
+                color: #333333;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 14px;
-                border: none;
+                border: 1px solid #e0e0e0;
                 padding: 8px;
             }
         """)
@@ -2061,7 +2061,7 @@ class DevToolsPanel(QWidget):
         
         # Console input
         input_container = QWidget()
-        input_container.setStyleSheet("background-color: #2d2d2d; padding: 8px;")
+        input_container.setStyleSheet("background-color: #f5f5f5; padding: 8px; border-top: 1px solid #e0e0e0;")
         input_layout = QHBoxLayout(input_container)
         input_layout.setContentsMargins(8, 4, 8, 4)
         
@@ -2073,16 +2073,16 @@ class DevToolsPanel(QWidget):
         self.console_input.setPlaceholderText("Execute JavaScript...")
         self.console_input.setStyleSheet("""
             QLineEdit {
-                background-color: #1e1e1e;
-                color: #cccccc;
-                border: 1px solid #3d3d3d;
+                background-color: #ffffff;
+                color: #333333;
+                border: 2px solid #e0e0e0;
                 border-radius: 4px;
                 padding: 8px;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 14px;
             }
             QLineEdit:focus {
-                border: 1px solid #4a90e2;
+                border: 2px solid #4a90e2;
             }
         """)
         self.console_input.returnPressed.connect(self.execute_console_command)
@@ -2106,22 +2106,23 @@ class DevToolsPanel(QWidget):
         self.network_list = QListWidget()
         self.network_list.setStyleSheet("""
             QListWidget {
-                background-color: #1e1e1e;
-                color: #cccccc;
-                border: 1px solid #3d3d3d;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #e0e0e0;
                 border-radius: 4px;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 13px;
             }
             QListWidget::item {
                 padding: 10px;
-                border-bottom: 1px solid #2d2d2d;
+                border-bottom: 1px solid #f0f0f0;
             }
             QListWidget::item:hover {
-                background-color: #2d2d2d;
+                background-color: #f5f5f5;
             }
             QListWidget::item:selected {
-                background-color: #3d3d3d;
+                background-color: #e8f4fd;
+                color: #333333;
             }
         """)
         layout.addWidget(self.network_list)
@@ -2169,11 +2170,11 @@ class DevToolsPanel(QWidget):
         self.elements_display.setReadOnly(True)
         self.elements_display.setStyleSheet("""
             QTextEdit {
-                background-color: #1e1e1e;
-                color: #cccccc;
+                background-color: #ffffff;
+                color: #333333;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 13px;
-                border: 1px solid #3d3d3d;
+                border: 1px solid #e0e0e0;
                 border-radius: 4px;
                 padding: 10px;
             }
@@ -2195,11 +2196,11 @@ class DevToolsPanel(QWidget):
         self.storage_display.setReadOnly(True)
         self.storage_display.setStyleSheet("""
             QTextEdit {
-                background-color: #1e1e1e;
-                color: #cccccc;
+                background-color: #ffffff;
+                color: #333333;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 13px;
-                border: 1px solid #3d3d3d;
+                border: 1px solid #e0e0e0;
                 border-radius: 4px;
                 padding: 10px;
             }
@@ -2235,11 +2236,11 @@ class DevToolsPanel(QWidget):
         self.performance_display.setReadOnly(True)
         self.performance_display.setStyleSheet("""
             QTextEdit {
-                background-color: #1e1e1e;
-                color: #cccccc;
+                background-color: #ffffff;
+                color: #333333;
                 font-family: 'Consolas', 'Monaco', monospace;
                 font-size: 13px;
-                border: 1px solid #3d3d3d;
+                border: 1px solid #e0e0e0;
                 border-radius: 4px;
                 padding: 10px;
             }
@@ -2263,7 +2264,7 @@ class DevToolsPanel(QWidget):
     def log_console(self, message, level="log"):
         """Add message to console"""
         colors = {
-            "log": "#cccccc",
+            "log": "#333333",
             "info": "#4a90e2",
             "warn": "#f39c12",
             "error": "#e74c3c",
