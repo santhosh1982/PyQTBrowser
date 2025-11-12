@@ -8,8 +8,9 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QToolBar,
                               QLineEdit, QPushButton, QVBoxLayout, QWidget, 
                               QHBoxLayout, QDialog, QListWidget, QLabel, 
                               QMessageBox, QInputDialog, QMenu, QFileDialog,
-                              QProgressBar, QListWidgetItem, QComboBox)
-from PyQt6.QtGui import QIcon, QAction, QKeySequence
+                              QProgressBar, QListWidgetItem, QComboBox, QSplitter,
+                              QTextEdit, QScrollArea, QFrame)
+from PyQt6.QtGui import QIcon, QAction, QKeySequence, QTextCursor
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest, QWebEngineProfile, QWebEngineScript
 
@@ -1147,6 +1148,557 @@ class SettingsDialog(QDialog):
         self.close()
 
 
+class AIChatPanel(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_browser = parent
+        self.chat_history = []
+        self.conversation_messages = []  # For AI context
+        
+        # Import AI providers
+        try:
+            from ai_providers import AIProviderManager, OpenAIProvider, GeminiProvider, ClaudeProvider
+            self.provider_manager = AIProviderManager()
+            self.providers = {
+                'openai': OpenAIProvider,
+                'gemini': GeminiProvider,
+                'claude': ClaudeProvider
+            }
+            self.ai_enabled = True
+        except Exception as e:
+            print(f"AI providers not available: {e}")
+            self.ai_enabled = False
+            self.provider_manager = None
+        
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Header
+        header = QWidget()
+        header.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4a90e2, stop:1 #357abd);
+                padding: 12px;
+            }
+            QLabel {
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+            QComboBox {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            QComboBox:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: white;
+                color: #333;
+                selection-background-color: #4a90e2;
+            }
+        """)
+        
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(8, 8, 8, 8)
+        
+        title = QLabel("🤖 AI Chat")
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        # Provider selector
+        if self.ai_enabled and self.provider_manager:
+            self.provider_combo = QComboBox()
+            self.provider_combo.addItem("🔵 OpenAI", "openai")
+            self.provider_combo.addItem("🟢 Gemini", "gemini")
+            self.provider_combo.addItem("🟣 Claude", "claude")
+            
+            current_provider = self.provider_manager.get_selected_provider()
+            index = self.provider_combo.findData(current_provider)
+            if index >= 0:
+                self.provider_combo.setCurrentIndex(index)
+            
+            self.provider_combo.currentIndexChanged.connect(self.on_provider_changed)
+            header_layout.addWidget(self.provider_combo)
+        
+        settings_btn = QPushButton("⚙️")
+        settings_btn.setToolTip("AI Settings")
+        settings_btn.clicked.connect(self.show_settings)
+        header_layout.addWidget(settings_btn)
+        
+        clear_btn = QPushButton("🗑️")
+        clear_btn.setToolTip("Clear Chat")
+        clear_btn.clicked.connect(self.clear_chat)
+        header_layout.addWidget(clear_btn)
+        
+        layout.addWidget(header)
+        
+        # Chat display area
+        self.chat_display = QTextEdit()
+        self.chat_display.setReadOnly(True)
+        self.chat_display.setStyleSheet("""
+            QTextEdit {
+                background-color: #f8f9fa;
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+        """)
+        layout.addWidget(self.chat_display, 1)
+        
+        # Input area
+        input_container = QWidget()
+        input_container.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border-top: 1px solid #e0e0e0;
+                padding: 12px;
+            }
+        """)
+        
+        input_layout = QVBoxLayout(input_container)
+        input_layout.setContentsMargins(8, 8, 8, 8)
+        input_layout.setSpacing(8)
+        
+        # Quick actions
+        actions_layout = QHBoxLayout()
+        
+        summarize_btn = QPushButton("📄 Summarize Page")
+        summarize_btn.clicked.connect(self.summarize_page)
+        actions_layout.addWidget(summarize_btn)
+        
+        explain_btn = QPushButton("💡 Explain")
+        explain_btn.clicked.connect(self.explain_page)
+        actions_layout.addWidget(explain_btn)
+        
+        input_layout.addLayout(actions_layout)
+        
+        # Message input
+        self.message_input = QTextEdit()
+        self.message_input.setPlaceholderText("Ask me anything about this page or general questions...")
+        self.message_input.setMaximumHeight(80)
+        self.message_input.setStyleSheet("""
+            QTextEdit {
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+                background-color: #ffffff;
+            }
+            QTextEdit:focus {
+                border: 2px solid #4a90e2;
+            }
+        """)
+        input_layout.addWidget(self.message_input)
+        
+        # Send button
+        send_btn = QPushButton("📤 Send Message")
+        send_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton:pressed {
+                background-color: #2868a8;
+            }
+        """)
+        send_btn.clicked.connect(self.send_message)
+        input_layout.addWidget(send_btn)
+        
+        layout.addWidget(input_container)
+        
+        self.setLayout(layout)
+        
+        # Welcome message
+        self.add_ai_message("👋 Hello! I'm your AI assistant. I can help you with:\n\n"
+                           "• Summarizing web pages\n"
+                           "• Explaining content\n"
+                           "• Answering questions\n"
+                           "• General assistance\n\n"
+                           "Try the quick action buttons or type your question!")
+    
+    def add_user_message(self, message):
+        """Add user message to chat"""
+        self.chat_history.append(('user', message))
+        html = f"""
+        <div style='margin: 10px 0; text-align: right;'>
+            <div style='display: inline-block; background-color: #4a90e2; color: white; 
+                        padding: 10px 15px; border-radius: 12px; max-width: 80%; text-align: left;'>
+                <strong>You:</strong><br>{message}
+            </div>
+        </div>
+        """
+        self.chat_display.append(html)
+        self.chat_display.moveCursor(QTextCursor.MoveOperation.End)
+    
+    def add_ai_message(self, message):
+        """Add AI message to chat"""
+        self.chat_history.append(('ai', message))
+        html = f"""
+        <div style='margin: 10px 0;'>
+            <div style='display: inline-block; background-color: #e8f4fd; color: #333; 
+                        padding: 10px 15px; border-radius: 12px; max-width: 80%;'>
+                <strong>🤖 AI:</strong><br>{message}
+            </div>
+        </div>
+        """
+        self.chat_display.append(html)
+        self.chat_display.moveCursor(QTextCursor.MoveOperation.End)
+    
+    def send_message(self):
+        """Send user message and get AI response"""
+        message = self.message_input.toPlainText().strip()
+        if not message:
+            return
+        
+        self.add_user_message(message)
+        self.message_input.clear()
+        
+        # Simulate AI response (in real implementation, call actual AI API)
+        response = self.generate_ai_response(message)
+        self.add_ai_message(response)
+    
+    def generate_ai_response(self, message, context=None):
+        """Generate AI response using selected provider"""
+        if not self.ai_enabled or not self.provider_manager:
+            return ("💡 AI providers not configured. Please:\n\n"
+                   "1. Install required libraries:\n"
+                   "   pip install openai google-generativeai anthropic\n"
+                   "2. Configure API keys in settings (⚙️ button)\n"
+                   "3. Select your preferred provider")
+        
+        try:
+            # Get selected provider
+            provider_name = self.provider_manager.get_selected_provider()
+            api_key = self.provider_manager.get_api_key(provider_name)
+            model = self.provider_manager.get_model(provider_name)
+            
+            if not api_key:
+                return (f"⚠️ {provider_name.upper()} API key not configured.\n\n"
+                       f"Please click the ⚙️ Settings button to add your API key.")
+            
+            # Build conversation messages
+            messages = [
+                {"role": "system", "content": "You are a helpful AI assistant integrated into a web browser. "
+                                             "You can help users understand web content, answer questions, "
+                                             "and provide information. Be concise and helpful."}
+            ]
+            
+            # Add conversation history
+            messages.extend(self.conversation_messages)
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+            
+            # Add context if provided
+            if context:
+                messages[-1]["content"] = f"Context: {context}\n\nQuestion: {message}"
+            
+            # Get provider instance
+            provider_class = self.providers.get(provider_name)
+            if not provider_class:
+                return f"Error: Provider {provider_name} not found"
+            
+            provider = provider_class(api_key)
+            
+            # Generate response
+            response = provider.generate_response(
+                messages,
+                model=model,
+                temperature=self.provider_manager.config['settings']['temperature'],
+                max_tokens=self.provider_manager.config['settings']['max_tokens']
+            )
+            
+            # Update conversation history
+            self.conversation_messages.append({"role": "user", "content": message})
+            self.conversation_messages.append({"role": "assistant", "content": response})
+            
+            # Keep only last 10 messages for context
+            if len(self.conversation_messages) > 20:
+                self.conversation_messages = self.conversation_messages[-20:]
+            
+            return response
+            
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    def summarize_page(self):
+        """Summarize current page"""
+        self.add_user_message("📄 Summarize this page")
+        self.add_ai_message("⏳ Extracting page content...")
+        
+        def handle_content(content):
+            if content:
+                prompt = f"Please provide a concise summary of this web page content:\n\n{content}"
+                response = self.generate_ai_response(prompt)
+                # Remove the loading message
+                self.chat_history.pop()
+                self.chat_display.clear()
+                for role, msg in self.chat_history:
+                    if role == 'user':
+                        self.add_user_message(msg)
+                    else:
+                        self.add_ai_message(msg)
+                self.add_ai_message(f"📄 **Summary:**\n\n{response}")
+            else:
+                self.add_ai_message("⚠️ Could not extract page content.")
+        
+        self.extract_page_content(handle_content)
+    
+    def explain_page(self):
+        """Explain current page"""
+        self.add_user_message("💡 Explain this page")
+        self.add_ai_message("⏳ Analyzing page content...")
+        
+        def handle_content(content):
+            if content:
+                prompt = f"Please explain what this web page is about in detail, including main topics and key concepts:\n\n{content}"
+                response = self.generate_ai_response(prompt)
+                # Remove the loading message
+                self.chat_history.pop()
+                self.chat_display.clear()
+                for role, msg in self.chat_history:
+                    if role == 'user':
+                        self.add_user_message(msg)
+                    else:
+                        self.add_ai_message(msg)
+                self.add_ai_message(f"💡 **Explanation:**\n\n{response}")
+            else:
+                self.add_ai_message("⚠️ Could not extract page content.")
+        
+        self.extract_page_content(handle_content)
+    
+    def clear_chat(self):
+        """Clear chat history"""
+        self.chat_history.clear()
+        self.conversation_messages.clear()
+        self.chat_display.clear()
+        self.add_ai_message("Chat cleared! How can I help you?")
+    
+    def on_provider_changed(self):
+        """Handle provider selection change"""
+        if self.ai_enabled and self.provider_manager:
+            provider = self.provider_combo.currentData()
+            self.provider_manager.set_selected_provider(provider)
+            self.add_ai_message(f"Switched to {provider.upper()}. Ready to chat!")
+    
+    def show_settings(self):
+        """Show AI settings dialog"""
+        dialog = AISettingsDialog(self.provider_manager, self)
+        dialog.exec()
+    
+    def extract_page_content(self, callback):
+        """Extract text content from current page"""
+        if self.parent_browser:
+            browser = self.parent_browser.current_browser()
+            if browser:
+                script = """
+                (function() {
+                    // Get main content, excluding scripts, styles, etc.
+                    let content = document.body.innerText;
+                    // Limit to first 5000 characters
+                    return content.substring(0, 5000);
+                })();
+                """
+                browser.page().runJavaScript(script, callback)
+
+
+class AISettingsDialog(QDialog):
+    """Dialog for configuring AI settings"""
+    
+    def __init__(self, provider_manager, parent=None):
+        super().__init__(parent)
+        self.provider_manager = provider_manager
+        self.setWindowTitle('⚙️ AI Settings')
+        self.setGeometry(100, 100, 600, 500)
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            QLabel {
+                font-size: 13px;
+                color: #333333;
+            }
+            QLineEdit {
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #ffffff;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a90e2;
+            }
+            QComboBox {
+                border: 2px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #ffffff;
+                font-size: 13px;
+            }
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton#saveBtn {
+                background-color: #27ae60;
+            }
+            QPushButton#saveBtn:hover {
+                background-color: #229954;
+            }
+        """)
+        
+        # Title
+        title = QLabel("🤖 AI Provider Configuration")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;")
+        layout.addWidget(title)
+        
+        # OpenAI settings
+        openai_group = QLabel("🔵 OpenAI (GPT)")
+        openai_group.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        layout.addWidget(openai_group)
+        
+        self.openai_key = QLineEdit()
+        self.openai_key.setPlaceholderText("Enter OpenAI API key (sk-...)")
+        self.openai_key.setText(self.provider_manager.get_api_key('openai'))
+        self.openai_key.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.openai_key)
+        
+        self.openai_model = QComboBox()
+        self.openai_model.addItems(['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo-preview'])
+        self.openai_model.setCurrentText(self.provider_manager.get_model('openai'))
+        layout.addWidget(self.openai_model)
+        
+        # Gemini settings
+        gemini_group = QLabel("🟢 Google Gemini")
+        gemini_group.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        layout.addWidget(gemini_group)
+        
+        self.gemini_key = QLineEdit()
+        self.gemini_key.setPlaceholderText("Enter Gemini API key")
+        self.gemini_key.setText(self.provider_manager.get_api_key('gemini'))
+        self.gemini_key.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.gemini_key)
+        
+        self.gemini_model = QComboBox()
+        self.gemini_model.addItems(['gemini-pro', 'gemini-pro-vision'])
+        self.gemini_model.setCurrentText(self.provider_manager.get_model('gemini'))
+        layout.addWidget(self.gemini_model)
+        
+        # Claude settings
+        claude_group = QLabel("🟣 Anthropic Claude")
+        claude_group.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        layout.addWidget(claude_group)
+        
+        self.claude_key = QLineEdit()
+        self.claude_key.setPlaceholderText("Enter Claude API key")
+        self.claude_key.setText(self.provider_manager.get_api_key('claude'))
+        self.claude_key.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.claude_key)
+        
+        self.claude_model = QComboBox()
+        self.claude_model.addItems([
+            'claude-3-opus-20240229',
+            'claude-3-sonnet-20240229',
+            'claude-3-haiku-20240307'
+        ])
+        self.claude_model.setCurrentText(self.provider_manager.get_model('claude'))
+        layout.addWidget(self.claude_model)
+        
+        # Help text
+        help_text = QLabel(
+            "💡 Get API keys:\n"
+            "• OpenAI: https://platform.openai.com/api-keys\n"
+            "• Gemini: https://makersuite.google.com/app/apikey\n"
+            "• Claude: https://console.anthropic.com/\n\n"
+            "Install libraries: pip install openai google-generativeai anthropic"
+        )
+        help_text.setStyleSheet("font-size: 11px; color: #666; background: #fff; padding: 10px; border-radius: 6px;")
+        help_text.setWordWrap(True)
+        layout.addWidget(help_text)
+        
+        layout.addStretch()
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("✗ Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton("💾 Save Settings")
+        save_btn.setObjectName('saveBtn')
+        save_btn.clicked.connect(self.save_settings)
+        button_layout.addWidget(save_btn)
+        
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+    
+    def save_settings(self):
+        """Save AI settings"""
+        # Save API keys
+        self.provider_manager.set_api_key('openai', self.openai_key.text())
+        self.provider_manager.set_api_key('gemini', self.gemini_key.text())
+        self.provider_manager.set_api_key('claude', self.claude_key.text())
+        
+        # Save models
+        self.provider_manager.set_model('openai', self.openai_model.currentText())
+        self.provider_manager.set_model('gemini', self.gemini_model.currentText())
+        self.provider_manager.set_model('claude', self.claude_model.currentText())
+        
+        QMessageBox.information(self, 'Settings Saved', 'AI settings have been saved successfully!')
+        self.accept()
+
+
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1283,7 +1835,23 @@ class Browser(QMainWindow):
         self.tabs.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tabs.tabBar().customContextMenuRequested.connect(self.show_tab_context_menu)
         
-        self.setCentralWidget(self.tabs)
+        # Create AI Chat side panel
+        self.ai_panel = AIChatPanel(self)
+        self.ai_panel.setMinimumWidth(300)
+        self.ai_panel.setMaximumWidth(500)
+        
+        # Create splitter for main content and side panel
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.addWidget(self.tabs)
+        self.splitter.addWidget(self.ai_panel)
+        self.splitter.setStretchFactor(0, 3)  # Main content gets more space
+        self.splitter.setStretchFactor(1, 1)  # Side panel gets less space
+        
+        # Initially hide the AI panel
+        self.ai_panel.hide()
+        self.ai_panel_visible = False
+        
+        self.setCentralWidget(self.splitter)
         
         navbar = QToolBar()
         navbar.setMovable(False)
@@ -1328,6 +1896,13 @@ class Browser(QMainWindow):
         bookmark_add_btn.setToolTip('Bookmark this page')
         bookmark_add_btn.triggered.connect(self.add_bookmark)
         navbar.addAction(bookmark_add_btn)
+        
+        navbar.addSeparator()
+        
+        ai_panel_btn = QAction('🤖', self)
+        ai_panel_btn.setToolTip('Toggle AI Chat Assistant')
+        ai_panel_btn.triggered.connect(self.toggle_ai_panel)
+        navbar.addAction(ai_panel_btn)
         
         menu_bar = self.menuBar()
         
@@ -1374,6 +1949,13 @@ class Browser(QMainWindow):
         history_menu.addAction(clear_history_action)
         
         tools_menu = menu_bar.addMenu('Tools')
+        
+        ai_chat_action = QAction('🤖 AI Chat Assistant', self)
+        ai_chat_action.setShortcut(QKeySequence('Ctrl+Shift+A'))
+        ai_chat_action.triggered.connect(self.toggle_ai_panel)
+        tools_menu.addAction(ai_chat_action)
+        
+        tools_menu.addSeparator()
         
         downloads_action = QAction('Downloads', self)
         downloads_action.setShortcut(QKeySequence('Ctrl+J'))
@@ -1722,6 +2304,15 @@ class Browser(QMainWindow):
         else:
             # No session found, open homepage
             self.add_new_tab(QUrl(self.settings_manager.get('homepage')), 'Home')
+    
+    def toggle_ai_panel(self):
+        """Toggle AI Chat side panel visibility"""
+        self.ai_panel_visible = not self.ai_panel_visible
+        
+        if self.ai_panel_visible:
+            self.ai_panel.show()
+        else:
+            self.ai_panel.hide()
     
     def closeEvent(self, event):
         """Save session before closing"""

@@ -24,6 +24,12 @@
 **Includes**: All tabs + pinned status  
 **File**: browser_session.json
 
+## 🤖 AI Chat Assistant
+**Access**: Click 🤖 or Ctrl+Shift+A  
+**Features**: Summarize, Explain, Free-form chat  
+**Panel**: Collapsible side panel (right side)  
+**Quick Actions**: One-click page analysis
+
 ## ⌨️ Keyboard Shortcuts
 - **Ctrl+T** - New Tab
 - **Ctrl+W** - Close Tab
@@ -31,6 +37,7 @@
 - **Ctrl+H** - History
 - **Ctrl+J** - Downloads
 - **Ctrl+D** - Add Bookmark
+- **Ctrl+Shift+A** - AI Chat Assistant
 - **Ctrl+Q** - Exit
 
 ## 📚 Core Features
@@ -44,7 +51,8 @@
 1. **Change Theme**: Tools → Themes → Select → Apply
 2. **Add Extension**: Tools → Extensions → Add → Select .js
 3. **Pin Tab**: Right-click tab → Pin Tab
-4. **Restore Session**: Just close and reopen browser!
+4. **AI Chat**: Click 🤖 or Ctrl+Shift+A
+5. **Restore Session**: Just close and reopen browser!
 
 ## 📁 Files
 - `browser_data.db` - Bookmarks & history
